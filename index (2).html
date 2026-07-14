@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOLD THE LINE — Frontline Command</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0e12;
+    --panel:#12171f;
+    --panel-2:#0e131a;
+    --border:#232c38;
+    --border-bright:#3a4c60;
+    --blue:#4fb0ff;
+    --blue-dim:#173a52;
+    --red:#ff5d5d;
+    --red-dim:#4a1c1c;
+    --gold:#f2b705;
+    --text:#d7e2ec;
+    --text-dim:#71828f;
+    --green:#5be08a;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:'JetBrains Mono',monospace; overflow:hidden; }
+  h1,h2,.display{ font-family:'Chakra Petch',sans-serif; letter-spacing:0.03em; }
+
+  #app{ position:relative; width:100vw; height:100vh; display:flex; flex-direction:column; }
+
+  /* ---- top bar ---- */
+  #topbar{
+    flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    padding:8px 16px; background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border-bottom:1px solid var(--border); z-index:5; gap:12px; flex-wrap:wrap;
+  }
+  #topbar h1{ font-size:15px; margin:0; white-space:nowrap; }
+  #topbar h1 span{ color:var(--blue); }
+  .hqside{ display:flex; align-items:center; gap:14px; font-size:12px; }
+  .hqside .lab{ color:var(--text-dim); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; }
+  .moneyval{ color:var(--gold); font-weight:600; }
+  .incomeval{ color:var(--green); font-size:10px; }
+  #topRight{ display:flex; gap:8px; align-items:center; }
+  #topRight button{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim);
+    font-family:'JetBrains Mono',monospace; font-size:11px; padding:6px 10px; cursor:pointer;
+  }
+  #topRight button:hover{ border-color:var(--border-bright); color:var(--text); }
+  #topRight button.active{ color:var(--blue); border-color:var(--blue); }
+
+  /* ---- battlefield ---- */
+  #main{ flex:1 1 auto; position:relative; overflow:hidden; }
+  #game{ display:block; width:100%; height:100%; background:#0a0f16; }
+  #banner{
+    position:absolute; top:12px; left:50%; transform:translateX(-50%);
+    background:rgba(10,14,20,0.85); border:1px solid var(--border-bright);
+    padding:7px 16px; font-size:12px; color:var(--gold); letter-spacing:0.05em;
+    z-index:6; display:none; pointer-events:none;
+    clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);
+  }
+
+  .bracket{ position:relative; }
+  .bracket::before,.bracket::after{ content:''; position:absolute; width:9px; height:9px; border:1px solid var(--border-bright); opacity:0.85; }
+  .bracket::before{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .bracket::after{ bottom:-1px; right:-1px; border-left:none; border-top:none; }
+
+  /* ---- bottom HUD ---- */
+  #hud{
+    flex:0 0 auto; display:flex; gap:0; background:linear-gradient(0deg,var(--panel-2),var(--panel));
+    border-top:1px solid var(--border); z-index:5; min-height:126px;
+  }
+  #unitBar{ flex:1 1 auto; display:flex; gap:8px; align-items:center; padding:10px 14px; flex-wrap:wrap; }
+  .unitbtn{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    font-family:'JetBrains Mono',monospace; padding:8px 10px; cursor:pointer; font-size:11px;
+    text-align:left; min-width:112px; position:relative; letter-spacing:0.01em;
+  }
+  .unitbtn:hover:not(:disabled){ border-color:var(--blue); color:var(--blue); }
+  .unitbtn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .unitbtn .uname{ display:block; font-weight:600; }
+  .unitbtn .ucost{ display:block; color:var(--gold); font-size:10px; margin-top:2px; }
+  .unitbtn .ustat{ display:block; color:var(--text-dim); font-size:9px; margin-top:2px; }
+  .unitbtn .ulock{ color:var(--red); font-size:9px; margin-top:2px; display:block; }
+
+  #hqPanel{
+    flex:0 0 220px; border-left:1px solid var(--border); padding:10px 14px;
+    display:flex; flex-direction:column; justify-content:center; gap:6px;
+  }
+  #hqPanel .lvl{ font-family:'Chakra Petch',sans-serif; font-size:13px; color:var(--blue); }
+  #hqBtn{
+    background:var(--blue-dim); border:1px solid var(--blue); color:#eaf6ff;
+    font-family:'Chakra Petch',sans-serif; font-weight:600; padding:9px 10px; cursor:pointer;
+    font-size:12px; letter-spacing:0.03em;
+  }
+  #hqBtn:hover:not(:disabled){ background:var(--blue); color:#03222d; }
+  #hqBtn:disabled{ opacity:0.4; cursor:not-allowed; }
+  #hqDesc{ font-size:9px; color:var(--text-dim); line-height:1.5; }
+
+  #logPanel{
+    flex:0 0 230px; border-left:1px solid var(--border); padding:8px 12px;
+    font-size:10px; color:var(--text-dim); overflow-y:auto; line-height:1.7;
+  }
+  #logPanel .entry.warn{ color:var(--red); }
+  #logPanel .entry.good{ color:var(--green); }
+
+  /* ---- overlays ---- */
+  .overlay{ position:absolute; inset:0; background:rgba(6,9,14,0.9); display:flex;
+    align-items:center; justify-content:center; z-index:20; }
+  .overlay.hidden{ display:none; }
+  .modal{ background:var(--panel); border:1px solid var(--border-bright); padding:26px 30px; max-width:540px; width:90%; position:relative; }
+  .modal h2{ margin:0 0 12px 0; color:var(--blue); font-size:20px; }
+  .modal p,.modal li{ font-size:12px; color:var(--text-dim); line-height:1.8; }
+  .modal ul{ padding-left:18px; margin:8px 0; }
+  .modal button{ margin-top:14px; background:var(--blue-dim); border:1px solid var(--blue); color:#eaf6ff;
+    font-family:'Chakra Petch',sans-serif; font-weight:600; padding:10px 20px; cursor:pointer; font-size:13px; letter-spacing:0.04em; }
+  .modal button:hover{ background:var(--blue); color:#03222d; }
+  #gameOverModal h2.win{ color:var(--green); }
+  #gameOverModal h2.lose{ color:var(--red); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <h1>HOLD THE <span>LINE</span></h1>
+    <div class="hqside">
+      <div><span class="lab">Treasury</span><br><span class="moneyval" id="moneyVal">0</span></div>
+      <div><span class="lab">Income/s</span><br><span class="incomeval" id="incomeVal">0</span></div>
+      <div><span class="lab">Your HQ</span><br><span id="hqLevelVal">Lv.1</span></div>
+      <div><span class="lab">Enemy HQ</span><br><span id="enemyHqLevelVal">Lv.1</span></div>
+    </div>
+    <div id="topRight">
+      <button id="speedBtn">SPEED: 1x</button>
+      <button id="pauseBtn">PAUSE</button>
+      <button id="muteBtn">SOUND: ON</button>
+      <button id="helpBtn">HELP</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <canvas id="game" width="1400" height="480"></canvas>
+    <div id="banner"></div>
+  </div>
+
+  <div id="hud">
+    <div id="unitBar"></div>
+    <div id="hqPanel" class="bracket">
+      <div class="lvl" id="hqLabel">Command Level 1</div>
+      <div id="hqDesc">Upgrade to unlock stronger units and reinforce your base.</div>
+      <button id="hqBtn">Upgrade HQ</button>
+    </div>
+    <div id="logPanel" class="bracket"></div>
+  </div>
+</div>
+
+<div class="overlay" id="introModal">
+  <div class="modal bracket">
+    <h2>HOLD THE LINE</h2>
+    <p>A tug-of-war frontline command game. Your treasury fills automatically — spend it deploying units that march
+       toward the enemy base and fight whatever stands in their way. Capture the flags in the middle of the field
+       to boost your income, and upgrade your Command HQ to unlock stronger units.</p>
+    <ul>
+      <li>Units move and fight <b>automatically</b> — there is no direct unit control.</li>
+      <li>Click a unit button to deploy it. It costs money and marches out immediately.</li>
+      <li>Hold a capture flag by keeping more units near it than the enemy.</li>
+      <li>Destroy the enemy Command HQ before they destroy yours.</li>
+    </ul>
+    <button id="startBtn">DEPLOY</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="gameOverModal">
+  <div class="modal bracket">
+    <h2 id="goTitle">VICTORY</h2>
+    <p id="goBody">The enemy Command HQ has fallen.</p>
+    <button id="restartBtn">REDEPLOY</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============== AUDIO ============== */
+let audioCtx=null, soundOn=true;
+function ensureAudio(){ if(!audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function beep(freq,dur,type,vol){
+  if(!soundOn) return; ensureAudio(); if(!audioCtx) return;
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+  osc.type=type||'square'; osc.frequency.setValueAtTime(freq,t0);
+  gain.gain.setValueAtTime(vol!=null?vol:0.05,t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0+dur);
+}
+const SFX = {
+  deploy: ()=>beep(520,0.09,'triangle',0.05),
+  hit: ()=>beep(150,0.05,'square',0.035),
+  death: ()=>beep(90,0.2,'sawtooth',0.05),
+  capture: ()=>beep(880,0.15,'sine',0.06),
+  upgrade: ()=>beep(660,0.18,'triangle',0.07),
+  warn: ()=>beep(260,0.2,'square',0.06),
+};
+
+/* ============== CONSTANTS ============== */
+const W = 1400, H = 480;
+const GROUND_Y = 380;
+const PLAYER_BASE_X = 70, ENEMY_BASE_X = W-70;
+
+const UNIT_DEFS = {
+  recruit:  { name:'Recruit',  cost:20,  hp:32,  dmg:5,  range:20,  speed:42, atkCd:0.75, unlock:1, shape:'circle', color:null },
+  trooper:  { name:'Trooper',  cost:48,  hp:42,  dmg:10, range:150, speed:34, atkCd:1.15, unlock:2, shape:'square', color:null },
+  tank:     { name:'Tank',     cost:95,  hp:170, dmg:15, range:34,  speed:24, atkCd:1.2,  unlock:3, shape:'tank',   color:null },
+  behemoth: { name:'Behemoth', cost:180, hp:320, dmg:28, range:64,  speed:17, atkCd:1.6,  unlock:4, shape:'hex',    color:null },
+};
+const UNIT_ORDER = ['recruit','trooper','tank','behemoth'];
+
+const HQ_UPGRADE_COST = [0, 160, 420, 950]; // cost to go from level i to i+1 (index = current level, 1-based -> use index level)
+const HQ_MAX_LEVEL = 4;
+
+const CAPTURE_RADIUS = 95;
+const CAPTURE_RATE = 14;      // control points per second when uncontested advantage
+const CAPTURE_DECAY = 5;      // decay toward neutral when tied
+const CAPTURE_THRESHOLD = 55; // |control| needed to hold the point
+const POINT_INCOME = 3;
+
+let idCounter = 1;
+function nextId(){ return idCounter++; }
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+
+/* ============== STATE ============== */
+let units = [];
+let effects = [];
+let capturePoints = [];
+let playerBase, enemyBase;
+let gameOver = false, paused = false, gameSpeed = 1;
+let elapsedTime = 0;
+
+const player = { money: 120, hqLevel: 1, income: 0 };
+const enemy  = { money: 120, hqLevel: 1, income: 0 };
+const ai = { lastAction: 0, nextAction: 1.5 };
+
+/* ============== DOM ============== */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const bannerEl = document.getElementById('banner');
+const moneyVal = document.getElementById('moneyVal');
+const incomeVal = document.getElementById('incomeVal');
+const hqLevelVal = document.getElementById('hqLevelVal');
+const enemyHqLevelVal = document.getElementById('enemyHqLevelVal');
+const unitBar = document.getElementById('unitBar');
+const hqLabel = document.getElementById('hqLabel');
+const hqDesc = document.getElementById('hqDesc');
+const hqBtn = document.getElementById('hqBtn');
+const logPanel = document.getElementById('logPanel');
+const introModal = document.getElementById('introModal');
+const gameOverModal = document.getElementById('gameOverModal');
+
+function log(msg, cls){
+  const d = document.createElement('div');
+  d.className = 'entry' + (cls? ' '+cls : '');
+  d.textContent = msg;
+  logPanel.appendChild(d);
+  logPanel.scrollTop = logPanel.scrollHeight;
+  while(logPanel.children.length>60) logPanel.removeChild(logPanel.firstChild);
+}
+function showBanner(text, ms){
+  bannerEl.textContent = text;
+  bannerEl.style.display = 'block';
+  clearTimeout(showBanner._t);
+  showBanner._t = setTimeout(()=>{ bannerEl.style.display='none'; }, ms||2200);
+}
+
+/* ============== SETUP ============== */
+function setupWorld(){
+  units = []; effects = [];
+  gameOver = false; elapsedTime = 0;
+  player.money = 120; player.hqLevel = 1;
+  enemy.money = 120; enemy.hqLevel = 1;
+  ai.lastAction = 0; ai.nextAction = 1.5;
+
+  playerBase = makeBase('player');
+  enemyBase = makeBase('enemy');
+
+  capturePoints = [
+    { x: W*0.30, control: 0, controller:'neutral' },
+    { x: W*0.50, control: 0, controller:'neutral' },
+    { x: W*0.70, control: 0, controller:'neutral' },
+  ];
+
+  logPanel.innerHTML = '';
+  log('Frontline established. Hold the flags, break their line.', 'good');
+  buildUnitBar();
+  updateHqPanel();
+}
+
+function makeBase(side){
+  return {
+    side, kind:'base',
+    x: side==='player'?PLAYER_BASE_X:ENEMY_BASE_X, y: GROUND_Y,
+    w: 70, h: 90, hp: 500, maxHp: 500,
+    dmg: 10, range: 140, atkCd: 1.0, atkTimer: 0,
+  };
+}
+
+function baseStats(level){
+  return {
+    maxHp: 500 + (level-1)*260,
+    dmg: 10 + (level-1)*5,
+    range: 140 + (level-1)*14,
+    incomeMult: 1 + (level-1)*0.22,
+  };
+}
+
+function applyHqLevel(base, owner){
+  // Called on HQ upgrade; caller fully heals the base right after this.
+  const s = baseStats(owner.hqLevel);
+  base.maxHp = s.maxHp;
+  base.dmg = s.dmg;
+  base.range = s.range;
+}
+
+/* ============== UNIT SPAWN / DEPLOY ============== */
+function deployUnit(side, type){
+  const owner = side==='player'?player:enemy;
+  const def = UNIT_DEFS[type];
+  if(owner.hqLevel < def.unlock) return false;
+  if(owner.money < def.cost) return false;
+  owner.money -= def.cost;
+  const base = side==='player'?playerBase:enemyBase;
+  const dir = side==='player'? 1 : -1;
+  const u = {
+    id: nextId(), side, type, def,
+    x: base.x + dir*50, y: GROUND_Y + (Math.random()*20-10),
+    hp: def.hp, maxHp: def.hp, dmg: def.dmg, range: def.range,
+    speed: def.speed, atkCd: def.atkCd, atkTimer: 0,
+    dir, state: 'advance', target: null,
+    bob: Math.random()*10,
+  };
+  units.push(u);
+  if(side==='player'){ SFX.deploy(); }
+  return true;
+}
+
+/* ============== UI BUILD ============== */
+function buildUnitBar(){
+  unitBar.innerHTML = '';
+  UNIT_ORDER.forEach(type=>{
+    const def = UNIT_DEFS[type];
+    const btn = document.createElement('button');
+    btn.className = 'unitbtn';
+    btn.innerHTML = `<span class="uname">${def.name}</span>` +
+      (player.hqLevel < def.unlock
+        ? `<span class="ulock">Unlocks at HQ Lv.${def.unlock}</span>`
+        : `<span class="ucost">$${def.cost}</span><span class="ustat">HP ${def.hp} · DMG ${def.dmg} · RNG ${def.range}</span>`);
+    btn.disabled = (player.hqLevel < def.unlock) || (player.money < def.cost);
+    btn.onclick = ()=>{ if(deployUnit('player', type)) refreshHud(); };
+    btn.dataset.type = type;
+    unitBar.appendChild(btn);
+  });
+}
+function refreshUnitBar(){
+  Array.from(unitBar.children).forEach(btn=>{
+    const type = btn.dataset.type;
+    const def = UNIT_DEFS[type];
+    btn.disabled = (player.hqLevel < def.unlock) || (player.money < def.cost);
+  });
+}
+
+function updateHqPanel(){
+  hqLabel.textContent = `Command Level ${player.hqLevel}`;
+  if(player.hqLevel >= HQ_MAX_LEVEL){
+    hqDesc.textContent = 'Maximum level reached. Your HQ is fully reinforced.';
+    hqBtn.disabled = true;
+    hqBtn.textContent = 'MAX LEVEL';
+  } else {
+    const cost = HQ_UPGRADE_COST[player.hqLevel];
+    const nextUnlock = UNIT_ORDER.find(t=>UNIT_DEFS[t].unlock===player.hqLevel+1);
+    hqDesc.textContent = `Unlocks ${nextUnlock?UNIT_DEFS[nextUnlock].name:'reinforcements'}, boosts base HP, damage & income.`;
+    hqBtn.disabled = player.money < cost;
+    hqBtn.textContent = `Upgrade — $${cost}`;
+  }
+}
+
+hqBtn.addEventListener('click', ()=>{
+  if(player.hqLevel >= HQ_MAX_LEVEL) return;
+  const cost = HQ_UPGRADE_COST[player.hqLevel];
+  if(player.money < cost) return;
+  player.money -= cost;
+  player.hqLevel++;
+  applyHqLevel(playerBase, player);
+  playerBase.hp = playerBase.maxHp; // full repair on upgrade
+  SFX.upgrade();
+  log(`Command HQ upgraded to level ${player.hqLevel}.`, 'good');
+  buildUnitBar();
+  updateHqPanel();
+});
+
+/* ============== COMBAT / MOVEMENT ============== */
+function findTarget(u){
+  let best=null, bd=Infinity;
+  for(const o of units){
+    if(o.side===u.side || o.hp<=0) continue;
+    const d = Math.abs(o.x-u.x);
+    const ahead = u.dir>0 ? (o.x >= u.x-10) : (o.x <= u.x+10);
+    if(ahead && d<bd){ bd=d; best=o; }
+  }
+  return { target: best, dist: bd };
+}
+
+function dealDamage(attacker, target, isBase){
+  target.hp -= attacker.dmg;
+  effects.push({ type:'flash', x:target.x, y:target.y-(isBase?40:14), life:0.15, maxLife:0.15 });
+  if(attacker.range>60){
+    effects.push({ type:'shot', x1:attacker.x, y1:attacker.y-10, x2:target.x, y2:(isBase?target.y-40:target.y-10), life:0.08, maxLife:0.08 });
+  }
+  SFX.hit();
+  if(target.hp<=0){
+    if(isBase){ onBaseDestroyed(target); }
+    else { target.hp=0; effects.push({type:'boom',x:target.x,y:target.y-10,life:0.35,maxLife:0.35}); SFX.death(); }
+  }
+}
+
+function onBaseDestroyed(base){
+  base.hp = 0;
+  effects.push({type:'boom', x:base.x, y:base.y-40, life:0.6, maxLife:0.6});
+  endGame(base.side==='player' ? 'enemy' : 'player');
+}
+
+function updateUnit(u, dt){
+  if(u.hp<=0) return;
+  u.bob += dt*6;
+
+  const enemyBaseRef = u.side==='player' ? enemyBase : playerBase;
+  const baseDist = Math.abs(enemyBaseRef.x - u.x);
+
+  // engage nearest unit ahead within range
+  const {target, dist} = findTarget(u);
+  if(target && dist <= u.range + 6){
+    u.state = 'engage'; u.target = target;
+    u.atkTimer -= dt;
+    if(u.atkTimer<=0){ dealDamage(u, target, false); u.atkTimer = u.atkCd; }
+    return;
+  }
+  // if close enough to enemy base, attack it
+  if(enemyBaseRef.hp>0 && baseDist <= u.range + enemyBaseRef.w/2){
+    u.state = 'attackBase'; u.target = enemyBaseRef;
+    u.atkTimer -= dt;
+    if(u.atkTimer<=0){ dealDamage(u, enemyBaseRef, true); u.atkTimer = u.atkCd; }
+    return;
+  }
+  // otherwise advance
+  u.state = 'advance';
+  u.x += u.dir * u.speed * dt;
+  u.x = clamp(u.x, PLAYER_BASE_X-10, ENEMY_BASE_X+10);
+}
+
+function updateBaseCombat(base, dt){
+  if(base.hp<=0) return;
+  let best=null, bd=Infinity;
+  for(const o of units){
+    if(o.side===base.side || o.hp<=0) continue;
+    const d = Math.abs(o.x-base.x);
+    if(d<base.range && d<bd){ bd=d; best=o; }
+  }
+  if(best){
+    base.atkTimer -= dt;
+    if(base.atkTimer<=0){ dealDamage(base, best, false); base.atkTimer = base.atkCd; }
+  }
+}
+
+/* ============== CAPTURE POINTS ============== */
+function updateCapturePoints(dt){
+  capturePoints.forEach(p=>{
+    let pc=0, ec=0;
+    for(const u of units){
+      if(u.hp<=0) continue;
+      if(Math.abs(u.x-p.x) < CAPTURE_RADIUS){
+        if(u.side==='player') pc++; else ec++;
+      }
+    }
+    const prevController = p.controller;
+    if(pc>ec) p.control = clamp(p.control + CAPTURE_RATE*dt, -100, 100);
+    else if(ec>pc) p.control = clamp(p.control - CAPTURE_RATE*dt, -100, 100);
+    else {
+      if(p.control>0) p.control = Math.max(0, p.control - CAPTURE_DECAY*dt);
+      else if(p.control<0) p.control = Math.min(0, p.control + CAPTURE_DECAY*dt);
+    }
+    p.controller = p.control>=CAPTURE_THRESHOLD ? 'player' : p.control<=-CAPTURE_THRESHOLD ? 'enemy' : 'neutral';
+    if(p.controller !== prevController && p.controller !== 'neutral'){
+      if(p.controller==='player'){ SFX.capture(); log('Captured a supply point.', 'good'); }
+      else { log('Enemy captured a supply point.', 'warn'); }
+    }
+  });
+}
+
+function computeIncome(owner, side){
+  const s = baseStats(owner.hqLevel);
+  const base = 4;
+  const pts = capturePoints.filter(p=>p.controller===side).length;
+  return (base + pts*POINT_INCOME) * s.incomeMult;
+}
+
+/* ============== AI ============== */
+function updateAI(dt, t){
+  if(enemyBase.hp<=0) return;
+  ai.lastAction += dt;
+  if(ai.lastAction < ai.nextAction) return;
+  ai.lastAction = 0; ai.nextAction = 1.1 + Math.random()*1.3;
+
+  // occasionally upgrade HQ if affordable and has healthy bank
+  if(enemy.hqLevel < HQ_MAX_LEVEL){
+    const cost = HQ_UPGRADE_COST[enemy.hqLevel];
+    if(enemy.money >= cost * 1.3 && Math.random()<0.5){
+      enemy.money -= cost; enemy.hqLevel++;
+      applyHqLevel(enemyBase, enemy);
+      enemyBase.hp = enemyBase.maxHp;
+      log('Enemy HQ has upgraded.', 'warn');
+      return;
+    }
+  }
+  // pick strongest affordable unlocked unit, spend most of the time
+  const affordable = UNIT_ORDER.filter(t=>UNIT_DEFS[t].unlock<=enemy.hqLevel && UNIT_DEFS[t].cost<=enemy.money);
+  if(affordable.length){
+    const choice = Math.random()<0.7 ? affordable[affordable.length-1] : affordable[Math.floor(Math.random()*affordable.length)];
+    deployUnit('enemy', choice);
+  }
+}
+
+/* ============== MAIN LOOP ============== */
+let lastTime=null;
+function tick(now){
+  if(lastTime===null) lastTime=now;
+  let dt = (now-lastTime)/1000;
+  lastTime = now;
+  dt = Math.min(dt, 0.05) * gameSpeed;
+
+  if(!paused && !gameOver){
+    update(dt, now/1000);
+  }
+  render();
+  requestAnimationFrame(tick);
+}
+
+function update(dt, tNow){
+  elapsedTime += dt;
+
+  units.forEach(u=>updateUnit(u,dt));
+  updateBaseCombat(playerBase, dt);
+  updateBaseCombat(enemyBase, dt);
+  updateCapturePoints(dt);
+
+  player.income = computeIncome(player,'player');
+  enemy.income = computeIncome(enemy,'enemy');
+  player.money += player.income*dt;
+  enemy.money += enemy.income*dt;
+
+  updateAI(dt, tNow);
+
+  units = units.filter(u=>u.hp>0);
+  effects.forEach(e=>e.life-=dt);
+  effects = effects.filter(e=>e.life>0);
+
+  refreshHud();
+}
+
+function refreshHud(){
+  moneyVal.textContent = Math.floor(player.money);
+  incomeVal.textContent = '+' + player.income.toFixed(1);
+  hqLevelVal.textContent = 'Lv.' + player.hqLevel;
+  enemyHqLevelVal.textContent = 'Lv.' + enemy.hqLevel;
+  refreshUnitBar();
+  updateHqPanel();
+}
+
+function endGame(winnerSide){
+  gameOver = true;
+  const title = document.getElementById('goTitle');
+  const body = document.getElementById('goBody');
+  if(winnerSide==='player'){
+    title.textContent='VICTORY'; title.className='win';
+    body.textContent='The enemy Command HQ has fallen. Your frontline holds.';
+  } else {
+    title.textContent='DEFEAT'; title.className='lose';
+    body.textContent='Your Command HQ has been destroyed. The line is broken.';
+  }
+  gameOverModal.classList.remove('hidden');
+}
+
+/* ============== RENDER ============== */
+function render(){
+  ctx.clearRect(0,0,W,H);
+
+  // sky
+  const grad = ctx.createLinearGradient(0,0,0,GROUND_Y);
+  grad.addColorStop(0,'#0a0f16'); grad.addColorStop(1,'#0d1620');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,GROUND_Y);
+  // ground
+  ctx.fillStyle = '#141c26';
+  ctx.fillRect(0,GROUND_Y,W,H-GROUND_Y);
+  ctx.strokeStyle = 'rgba(79,176,255,0.15)';
+  ctx.beginPath(); ctx.moveTo(0,GROUND_Y); ctx.lineTo(W,GROUND_Y); ctx.stroke();
+  // faint distance lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  for(let x=0;x<W;x+=70){ ctx.beginPath(); ctx.moveTo(x,GROUND_Y); ctx.lineTo(x,H); ctx.stroke(); }
+
+  capturePoints.forEach(drawCapturePoint);
+  drawBase(playerBase);
+  drawBase(enemyBase);
+  units.forEach(drawUnit);
+  effects.forEach(drawEffect);
+}
+
+function drawCapturePoint(p){
+  const col = p.controller==='player' ? '#4fb0ff' : p.controller==='enemy' ? '#ff5d5d' : '#9aa6b0';
+  ctx.save();
+  ctx.translate(p.x, GROUND_Y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath(); ctx.arc(0,0,CAPTURE_RADIUS,0,Math.PI*2); ctx.stroke();
+  // pole
+  ctx.strokeStyle = '#5b6b78'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-58); ctx.stroke();
+  // flag
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(0,-58); ctx.lineTo(26,-50); ctx.lineTo(0,-42);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // control bar
+  const barW=60;
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(p.x-barW/2, GROUND_Y-72, barW, 5);
+  const pct = (p.control+100)/200;
+  ctx.fillStyle = col;
+  ctx.fillRect(p.x-barW/2, GROUND_Y-72, barW*pct, 5);
+  ctx.strokeStyle='rgba(255,255,255,0.25)';
+  ctx.strokeRect(p.x-barW/2, GROUND_Y-72, barW, 5);
+}
+
+function drawBase(b){
+  const col = b.side==='player' ? '#4fb0ff' : '#ff5d5d';
+  const dim = b.side==='player' ? '#0f2c3d' : '#3a1414';
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  const dir = b.side==='player' ? 1 : -1;
+  ctx.fillStyle = dim;
+  ctx.fillRect(-b.w/2, -b.h, b.w, b.h);
+  ctx.strokeStyle = col; ctx.lineWidth=2;
+  ctx.strokeRect(-b.w/2, -b.h, b.w, b.h);
+  // antenna / tier marker
+  for(let i=0;i<player.hqLevel && b.side==='player'; i++){
+    ctx.fillStyle=col; ctx.fillRect(-4 + i*10 - (player.hqLevel-1)*5, -b.h-10, 6, 10);
+  }
+  for(let i=0;i<enemy.hqLevel && b.side==='enemy'; i++){
+    ctx.fillStyle=col; ctx.fillRect(-4 + i*10 - (enemy.hqLevel-1)*5, -b.h-10, 6, 10);
+  }
+  ctx.fillStyle = col;
+  ctx.fillRect(-6, -b.h-4, 12, 8);
+  ctx.restore();
+  // hp bar
+  drawHpBar(b.x, b.y-b.h-22, b.w+10, b.hp, b.maxHp, col, true);
+}
+
+function drawUnit(u){
+  if(u.hp<=0) return;
+  const col = u.side==='player' ? '#4fb0ff' : '#ff5d5d';
+  const bobY = u.state==='advance' ? Math.sin(u.bob)*2 : 0;
+  ctx.save();
+  ctx.translate(u.x, GROUND_Y + bobY);
+  ctx.fillStyle = col;
+  const s = u.def.shape;
+  if(s==='circle'){
+    ctx.beginPath(); ctx.arc(0,-10,9,0,Math.PI*2); ctx.fill();
+  } else if(s==='square'){
+    ctx.fillRect(-9,-20,18,18);
+    ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(u.dir*14,-30); ctx.stroke();
+  } else if(s==='tank'){
+    ctx.fillRect(-16,-16,32,16);
+    ctx.fillRect(-6,-24,18,10);
+    ctx.fillRect(u.dir>0?6:-24,-21,18,4);
+    ctx.beginPath(); ctx.arc(-10,0,5,0,Math.PI*2); ctx.arc(10,0,5,0,Math.PI*2); ctx.fill();
+  } else if(s==='hex'){
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const ang = Math.PI/3*i - Math.PI/2;
+      const px = Math.cos(ang)*16, py = -20+Math.sin(ang)*16;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  drawHpBar(u.x, GROUND_Y-34, 22, u.hp, u.maxHp, col, false);
+}
+
+function drawHpBar(x,y,w,hp,maxHp,col,alwaysShow){
+  if(!alwaysShow && hp>=maxHp) return;
+  ctx.fillStyle='rgba(0,0,0,0.55)';
+  ctx.fillRect(x-w/2,y,w,4);
+  const pct = clamp(hp/maxHp,0,1);
+  ctx.fillStyle = pct>0.4 ? '#5be08a' : '#ff5d5d';
+  ctx.fillRect(x-w/2,y,w*pct,4);
+}
+
+function drawEffect(e){
+  if(e.type==='flash'){
+    ctx.save(); ctx.globalAlpha=e.life/e.maxLife; ctx.fillStyle='#ffffff';
+    ctx.beginPath(); ctx.arc(e.x,e.y,5,0,Math.PI*2); ctx.fill(); ctx.restore();
+  } else if(e.type==='shot'){
+    ctx.save(); ctx.globalAlpha=e.life/e.maxLife; ctx.strokeStyle='#ffe08a'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(e.x1,e.y1); ctx.lineTo(e.x2,e.y2); ctx.stroke(); ctx.restore();
+  } else if(e.type==='boom'){
+    ctx.save(); const t=1-e.life/e.maxLife; ctx.globalAlpha=e.life/e.maxLife;
+    ctx.strokeStyle='#ff5d5d'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(e.x,e.y,10+t*30,0,Math.PI*2); ctx.stroke(); ctx.restore();
+  }
+}
+
+/* ============== UI WIRING ============== */
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  introModal.classList.add('hidden'); ensureAudio();
+});
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  gameOverModal.classList.add('hidden'); setupWorld();
+});
+document.getElementById('helpBtn').addEventListener('click', ()=>{
+  introModal.classList.remove('hidden');
+});
+document.getElementById('muteBtn').addEventListener('click', (e)=>{
+  soundOn = !soundOn; e.target.textContent = 'SOUND: ' + (soundOn?'ON':'OFF');
+});
+document.getElementById('pauseBtn').addEventListener('click', (e)=>{
+  paused = !paused; e.target.textContent = paused?'RESUME':'PAUSE';
+  e.target.classList.toggle('active', paused);
+});
+document.getElementById('speedBtn').addEventListener('click', (e)=>{
+  gameSpeed = gameSpeed===1 ? 2 : 1;
+  e.target.textContent = 'SPEED: ' + gameSpeed + 'x';
+  e.target.classList.toggle('active', gameSpeed===2);
+});
+
+/* ============== BOOT ============== */
+setupWorld();
+requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>
